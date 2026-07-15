@@ -1,0 +1,138 @@
+{{ header }}{{ column_left }}
+<div id="content">
+  <div class="page-header">
+    <div class="container-fluid">
+      <ul class="breadcrumb">
+        {% for breadcrumb in breadcrumbs %}
+          <li><a href="{{ breadcrumb.href }}">{{ breadcrumb.text }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  <div class="container-fluid">
+    {% if error_warning %}
+      <div class="alert alert-danger alert-dismissible"><i class="fa fa-exclamation-circle"></i> {{ error_warning }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
+    {% endif %}
+    {% if success %}
+      <div class="alert alert-success alert-dismissible"><i class="fa fa-check-circle"></i> {{ success }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
+    {% endif %}
+
+    <style>
+      .cb-panel { max-width: 760px; margin: 20px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding: 32px 36px; font-size: 15px; }
+      .cb-panel h2 { display: flex; align-items: center; gap: 12px; font-size: 24px; margin: 0 0 6px; }
+      .cb-panel h2 img { width: 44px; height: 44px; }
+      .cb-sub { color: #6b7280; margin-bottom: 24px; font-size: 15px; }
+      .cb-status { border-radius: 10px; padding: 14px 18px; margin-bottom: 26px; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+      .cb-status.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+      .cb-status.warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+      .cb-step { margin-bottom: 26px; }
+      .cb-step-label { font-weight: 700; font-size: 17px; margin-bottom: 6px; display: block; }
+      .cb-step-help { color: #6b7280; margin-bottom: 10px; }
+      .cb-step-help a { font-weight: 600; }
+      .cb-input { width: 100%; font-size: 18px; padding: 14px 16px; border: 2px solid #d1d5db; border-radius: 10px; letter-spacing: .5px; }
+      .cb-input:focus { border-color: #2563eb; outline: none; }
+      /* big friendly switch */
+      .cb-switch { position: relative; display: inline-block; width: 64px; height: 34px; vertical-align: middle; }
+      .cb-switch input { opacity: 0; width: 0; height: 0; }
+      .cb-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 34px; transition: .2s; }
+      .cb-slider:before { content: ""; position: absolute; height: 26px; width: 26px; left: 4px; bottom: 4px; background: #fff; border-radius: 50%; transition: .2s; }
+      .cb-switch input:checked + .cb-slider { background: #16a34a; }
+      .cb-switch input:checked + .cb-slider:before { transform: translateX(30px); }
+      .cb-switch-text { font-size: 16px; margin-left: 12px; vertical-align: middle; }
+      .cb-save { display: block; width: 100%; margin-top: 8px; background: #2563eb; color: #fff; border: none; border-radius: 10px; padding: 16px; font-size: 19px; font-weight: 700; cursor: pointer; }
+      .cb-save:hover { background: #1d4ed8; }
+      .cb-advanced { margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 18px; }
+      .cb-advanced summary { cursor: pointer; color: #6b7280; font-weight: 600; font-size: 14px; }
+      .cb-advanced .cb-adv-body { margin-top: 16px; }
+      .cb-adv-row { margin-bottom: 18px; }
+      .cb-adv-row label.cb-adv-label { font-weight: 600; display: block; margin-bottom: 6px; }
+      .cb-select, .cb-adv-input { font-size: 15px; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; width: 100%; max-width: 420px; }
+      .cb-verify { margin-top: 18px; text-align: center; color: #6b7280; }
+      .cb-demo { margin-top: 8px; color: #6b7280; font-size: 14px; }
+      .cb-demo a { font-weight: 600; }
+    </style>
+
+    <div class="cb-panel">
+      <h2><img src="{{ logo }}" alt="Conferbot"> {{ text_panel_title }}</h2>
+      <p class="cb-sub">{{ text_panel_sub }}</p>
+
+      {% if module_conferbot_status and module_conferbot_bot_id %}
+        <div class="cb-status ok">&#9989;&nbsp;{{ text_status_live }}
+          &nbsp;<a href="{{ store_url }}" target="_blank" rel="noopener">{{ text_status_see }}</a>
+        </div>
+      {% elseif not module_conferbot_bot_id %}
+        <div class="cb-status warn">&#128071;&nbsp;{{ text_status_paste }}</div>
+      {% else %}
+        <div class="cb-status warn">&#9208;&#65039;&nbsp;{{ text_status_off }}</div>
+      {% endif %}
+
+      <form action="{{ action }}" method="post">
+        <div class="cb-step">
+          <label class="cb-step-label" for="cb-id">{{ text_step1 }}</label>
+          <div class="cb-step-help">
+            {{ text_step1_help_find }} <a href="https://app.conferbot.com" target="_blank" rel="noopener">{{ text_step1_help_dashboard }}</a>:
+            {{ text_step1_help_rest }}
+          </div>
+          <input class="cb-input" type="text" id="cb-id" name="module_conferbot_bot_id"
+                 value="{{ module_conferbot_bot_id }}"
+                 placeholder="{{ text_bot_id_placeholder }}">
+          <div class="cb-demo">
+            {{ text_demo_question }}
+            <a href="#" id="cb-use-demo" data-demo-id="{{ demo_bot_id }}">{{ text_demo_link }}</a>
+            {{ text_demo_rest }}
+          </div>
+        </div>
+
+        <div class="cb-step">
+          <span class="cb-step-label">{{ text_step2 }}</span>
+          <label class="cb-switch">
+            <input type="checkbox" name="module_conferbot_status" value="1" {% if module_conferbot_status %}checked{% endif %}>
+            <span class="cb-slider"></span>
+          </label>
+          <span class="cb-switch-text">{{ text_step2_switch }}</span>
+        </div>
+
+        <button class="cb-save" type="submit">
+          {{ text_save }} &#127881;
+        </button>
+
+        <details class="cb-advanced">
+          <summary>{{ text_advanced }}</summary>
+          <div class="cb-adv-body">
+            <div class="cb-adv-row">
+              <label class="cb-adv-label" for="cb-embed">{{ text_embed_label }}</label>
+              <select class="cb-select" id="cb-embed" name="module_conferbot_embed_type">
+                <option value="live_chat" {% if module_conferbot_embed_type == 'live_chat' %}selected{% endif %}>{{ text_embed_live_chat }}</option>
+                <option value="popup_chat" {% if module_conferbot_embed_type == 'popup_chat' %}selected{% endif %}>{{ text_embed_popup_chat }}</option>
+              </select>
+            </div>
+            <div class="cb-adv-row">
+              <label class="cb-adv-label" for="cb-script">{{ text_script_url_label }}</label>
+              <input class="cb-adv-input" type="text" id="cb-script" name="module_conferbot_script_url" value="{{ module_conferbot_script_url }}">
+            </div>
+          </div>
+        </details>
+      </form>
+
+      <p class="cb-verify">
+        {{ text_help }} <a href="mailto:support@conferbot.com">support@conferbot.com</a>
+      </p>
+    </div>
+
+    <script type="text/javascript">
+      document.getElementById('cb-use-demo').addEventListener('click', function (e) {
+        e.preventDefault();
+        var input = document.getElementById('cb-id');
+        input.value = this.getAttribute('data-demo-id');
+        var toggle = document.querySelector('.cb-switch input');
+        if (toggle) { toggle.checked = true; }
+        input.focus();
+      });
+    </script>
+  </div>
+</div>
+{{ footer }}
