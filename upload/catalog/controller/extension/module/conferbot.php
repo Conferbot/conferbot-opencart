@@ -41,15 +41,18 @@ class ControllerExtensionModuleConferbot extends Controller
             return;
         }
 
-        $optionsJson = ConferbotLoader::toJson(
-            ConferbotLoader::buildOptions($this->buildSite(), $this->buildCustomer(), $this->buildCart())
-        );
+        $optionsJson = ConferbotLoader::toJson(ConferbotLoader::buildOptions(
+            $this->buildSite(),
+            $this->buildCustomer(),
+            $this->buildCart(),
+            (string) $this->config->get('module_conferbot_identity_secret')
+        ));
 
         $snippet = ConferbotLoader::render(array(
             'bot_id' => $botId,
             'embed_type' => (string) $this->config->get('module_conferbot_embed_type'),
             'script_url' => (string) $this->config->get('module_conferbot_script_url'),
-        ), $optionsJson);
+        ), $optionsJson, ConferbotLoader::toJson(ConferbotLoader::events($this->confirmedOrder())));
 
         // The common/header view renders <head>...</head> plus the opening of
         // <body>; inject just before </head>. If a heavily customized theme
@@ -61,6 +64,47 @@ class ControllerExtensionModuleConferbot extends Controller
         } else {
             $output .= $snippet . "\n";
         }
+    }
+
+    /**
+     * Event handler for catalog/controller/checkout/success/before: the
+     * success page clears the order from the session before the header
+     * renders, so keep its id for injectWidget() to report the purchase.
+     */
+    public function rememberOrder(&$route, &$args)
+    {
+        if (isset($this->session->data['order_id'])) {
+            $this->session->data['conferbot_order_id'] = (int) $this->session->data['order_id'];
+        }
+    }
+
+    /**
+     * The order just placed, on the checkout success page only (once: the
+     * kept id is cleared), and only the visitor's own.
+     */
+    private function confirmedOrder()
+    {
+        $route = isset($this->request->get['route']) ? (string) $this->request->get['route'] : '';
+        if ($route !== 'checkout/success' || empty($this->session->data['conferbot_order_id'])) {
+            return null;
+        }
+        $orderId = (int) $this->session->data['conferbot_order_id'];
+        unset($this->session->data['conferbot_order_id']);
+
+        $this->load->model('checkout/order');
+        $order = $this->model_checkout_order->getOrder($orderId);
+        if (!$order) {
+            return null;
+        }
+        if ((int) $order['customer_id'] !== 0 && (int) $order['customer_id'] !== (int) $this->customer->getId()) {
+            return null;
+        }
+
+        return array(
+            'id' => (int) $order['order_id'],
+            'total' => (float) $order['total'] * (float) $order['currency_value'],
+            'currency' => (string) $order['currency_code'],
+        );
     }
 
     private function buildSite()
