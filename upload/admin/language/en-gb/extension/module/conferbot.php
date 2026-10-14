@@ -22,7 +22,7 @@ $_['text_status_off'] = 'The chat is currently switched OFF. Turn it on below wh
 $_['text_step1'] = '1. Paste your Chatbot ID';
 $_['text_step1_help_find'] = 'Find it in your';
 $_['text_step1_help_dashboard'] = 'Conferbot dashboard';
-$_['text_step1_help_rest'] = 'open your bot, click "Share", then "Copy Bot ID". Pasting the whole code snippet also works - we will find the ID for you.';
+$_['text_step1_help_rest'] = 'open your bot, go to Share > Embed and copy the code - we will find the ID in it.';
 $_['text_bot_id_placeholder'] = 'e.g. 64a1b2c3d4e5f6a7b8c9d0e1';
 $_['text_demo_question'] = 'No account yet?';
 $_['text_demo_link'] = 'Try our demo bot';
@@ -34,6 +34,10 @@ $_['text_advanced'] = 'Advanced settings (optional - the defaults are fine)';
 $_['text_embed_label'] = 'How the chat appears';
 $_['text_embed_live_chat'] = 'Floating chat bubble (recommended)';
 $_['text_embed_popup_chat'] = 'Popup window';
+$_['text_identity_label'] = 'Identity verification secret (optional - from Conferbot workspace settings > Security > Identity verification; lets Conferbot trust your logged-in customers\' names and emails)';
+$_['text_identity_placeholder'] = 'Paste your secret';
+$_['text_identity_saved'] = 'Saved - paste a new one to replace it';
+$_['text_identity_clear'] = 'Remove the saved secret';
 $_['text_script_url_label'] = 'Widget script URL (leave as is unless Conferbot support says otherwise)';
 $_['text_help'] = 'Need help? Write to';
 $_['text_success_live'] = 'Saved! The chat is now live - open your store to say hello to it.';
@@ -41,6 +45,6 @@ $_['text_success_off'] = 'Saved. The chat is switched off for now - turn it on w
 
 // Error
 $_['error_permission'] = 'Warning: You do not have permission to modify the Conferbot module!';
-$_['error_bot_id'] = 'We could not find a Chatbot ID in what you pasted. It looks like a 24-character code, e.g. 64a1b2c3d4e5f6a7b8c9d0e1. In your Conferbot dashboard, open your bot, click "Share", then "Copy Bot ID".';
+$_['error_bot_id'] = 'We could not find a Chatbot ID in what you pasted. It looks like a 24-character code, e.g. 64a1b2c3d4e5f6a7b8c9d0e1. In your Conferbot dashboard, open your bot, go to Share > Embed and copy the code - we will find the ID in it.';
 $_['error_enable_without_id'] = 'Please paste your Chatbot ID first (step 1), then turn the chat on.';
 $_['error_script_url'] = 'The widget script URL (in Advanced settings) is not a valid web address. Leave it empty to use the default.';
