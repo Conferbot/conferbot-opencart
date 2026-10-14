@@ -235,4 +235,31 @@ class ConferbotLoaderTest extends TestCase
         $this->assertStringContainsString('live_chat', $html);
         $this->assertStringContainsString('cdn.conferbot.com\/dist\/v1\/widget.min.js', $html);
     }
+
+    public function testLoggedInCustomerIsSignedWithTheWorkspaceSecret()
+    {
+        $site = array('name' => 'Shop', 'url' => 'https://s.example/', 'language' => 'en-gb', 'currency' => 'GBP');
+        $customer = array('id' => 9, 'firstname' => 'Jane', 'lastname' => 'Doe', 'email' => 'jane@example.com');
+        $options = ConferbotLoader::buildOptions($site, $customer, null, 's3cret');
+        $this->assertSame(hash_hmac('sha256', 'oc-9', 's3cret'), $options['user']['hash']);
+        $this->assertArrayNotHasKey('hash', ConferbotLoader::buildOptions($site, $customer)['user']);
+        $this->assertStringNotContainsString('s3cret', ConferbotLoader::toJson($options));
+        $this->assertSame('old', ConferbotLoader::nextIdentitySecret('old', ' ', false));
+        $this->assertSame('new', ConferbotLoader::nextIdentitySecret('old', 'new', false));
+        $this->assertSame('', ConferbotLoader::nextIdentitySecret('old', 'new', true));
+    }
+
+    public function testSuccessPageReportsThePurchaseOnce()
+    {
+        $events = ConferbotLoader::events(array('id' => 31, 'total' => 49.5, 'currency' => 'GBP'));
+        $this->assertSame('purchase', $events[0]['name']);
+        $this->assertSame(array('value' => 49.5, 'currency' => 'GBP', 'order_id' => '31'), $events[0]['props']);
+        $this->assertSame('order-31', $events[0]['once']);
+        $this->assertSame(array(), ConferbotLoader::events(null));
+
+        $html = ConferbotLoader::render(array('bot_id' => '691c970890527a0468f9b2c9'), '{}', ConferbotLoader::toJson($events));
+        $this->assertStringContainsString('var events = [{"name":"purchase"', $html);
+        $this->assertStringContainsString("window.ConferbotWidget.track(e.name, e.props || {})", $html);
+        $this->assertStringContainsString("route=checkout\\/cart\\/add", $html);
+    }
 }
