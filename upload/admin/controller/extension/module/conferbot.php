@@ -21,6 +21,9 @@ class ControllerExtensionModuleConferbot extends Controller
     const EVENT_CODE = 'conferbot';
     const EVENT_TRIGGER = 'catalog/view/common/header/after';
     const EVENT_ACTION = 'extension/module/conferbot/injectWidget';
+    const ORDER_EVENT_CODE = 'conferbot_order';
+    const ORDER_EVENT_TRIGGER = 'catalog/controller/checkout/success/before';
+    const ORDER_EVENT_ACTION = 'extension/module/conferbot/rememberOrder';
 
     private $error = array();
 
@@ -31,6 +34,9 @@ class ControllerExtensionModuleConferbot extends Controller
         $this->document->setTitle($this->language->get('heading_title'));
 
         $this->load->model('setting/setting');
+
+        // A store that upgraded in place has no order event yet: add it here.
+        $this->ensureOrderEvent();
 
         if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
             $saved = $this->save();
@@ -100,6 +106,11 @@ class ControllerExtensionModuleConferbot extends Controller
             'module_conferbot_bot_id' => $botId,
             'module_conferbot_embed_type' => $embedType,
             'module_conferbot_script_url' => $scriptUrl,
+            'module_conferbot_identity_secret' => ConferbotLoader::nextIdentitySecret(
+                (string) $this->config->get('module_conferbot_identity_secret'),
+                isset($this->request->post['module_conferbot_identity_secret']) ? (string) $this->request->post['module_conferbot_identity_secret'] : '',
+                !empty($this->request->post['module_conferbot_identity_secret_clear'])
+            ),
         ));
 
         if ($status && $botId !== '') {
@@ -169,6 +180,8 @@ class ControllerExtensionModuleConferbot extends Controller
         }
 
         $data['module_conferbot_status'] = (int) $data['module_conferbot_status'];
+        // Write-only: the page only says whether one is saved.
+        $data['identity_secret_saved'] = (string) $this->config->get('module_conferbot_identity_secret') !== '';
 
         $data['demo_bot_id'] = ConferbotLoader::DEMO_BOT_ID;
         $data['default_script_url'] = ConferbotLoader::DEFAULT_SCRIPT_URL;
@@ -202,6 +215,15 @@ class ControllerExtensionModuleConferbot extends Controller
         $this->deleteEvent();
 
         $this->model_setting_event->addEvent(self::EVENT_CODE, self::EVENT_TRIGGER, self::EVENT_ACTION);
+        $this->model_setting_event->addEvent(self::ORDER_EVENT_CODE, self::ORDER_EVENT_TRIGGER, self::ORDER_EVENT_ACTION);
+    }
+
+    private function ensureOrderEvent()
+    {
+        $this->load->model('setting/event');
+        if (self::byCode() && !$this->model_setting_event->getEventByCode(self::ORDER_EVENT_CODE)) {
+            $this->model_setting_event->addEvent(self::ORDER_EVENT_CODE, self::ORDER_EVENT_TRIGGER, self::ORDER_EVENT_ACTION);
+        }
     }
 
     /**
@@ -221,10 +243,19 @@ class ControllerExtensionModuleConferbot extends Controller
     private function deleteEvent()
     {
         // OpenCart 3.0.2+ uses deleteEventByCode(); 3.0.0/3.0.1 used deleteEvent().
-        if (method_exists($this->model_setting_event, 'deleteEventByCode')) {
-            $this->model_setting_event->deleteEventByCode(self::EVENT_CODE);
-        } else {
-            $this->model_setting_event->deleteEvent(self::EVENT_CODE);
+        // (Models are proxies here, so method_exists() is always false: go by version.)
+        foreach (array(self::EVENT_CODE, self::ORDER_EVENT_CODE) as $code) {
+            if (self::byCode()) {
+                $this->model_setting_event->deleteEventByCode($code);
+            } else {
+                $this->model_setting_event->deleteEvent($code);
+            }
         }
+    }
+
+    /** OpenCart 3.0.2+ finds and deletes events by code. */
+    private static function byCode()
+    {
+        return !defined('VERSION') || version_compare(VERSION, '3.0.2.0', '>=');
     }
 }
