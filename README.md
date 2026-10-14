@@ -12,26 +12,42 @@ Paste the Chatbot ID, flip the switch, and the bot is live on the storefront - 3
 
 ## How it works
 
-The extension registers an OpenCart event on `catalog/view/common/header/after` and injects the standard Conferbot loader snippet before `</head>` on every storefront page:
+The extension registers two OpenCart events. `catalog/view/common/header/after` injects the standard Conferbot loader before `</head>` on every storefront page; `catalog/controller/checkout/success/before` keeps the order just placed so the success page can report it. The widget script loads without blocking the page, and `ConferbotWidget` is called once it has loaded:
 
 ```html
-<script src="https://cdn.conferbot.com/dist/v1/widget.min.js" async></script>
 <script>
-  window.ConferbotWidget("<CHATBOT_ID>", "live_chat", {
-    user:       { id, name, email },              // logged-in customer, if any
-    customData: { platform: "opencart", storeName, storeUrl,
-                  storeLanguage, storeCurrency, cartTotal, cartItemCount }
-  });
+  (function (d, s, id) {
+    var js = d.createElement(s); js.async = true; js.id = id;
+    js.src = "https://cdn.conferbot.com/dist/v1/widget.min.js";
+    d.head.appendChild(js);
+    js.onload = function () {
+      window.ConferbotWidget("<CHATBOT_ID>", "live_chat", {
+        user:       { id: "oc-7", name, email, hash },   // logged-in customer, if any
+        customData: { platform: "opencart", storeName, storeUrl,
+                      storeLanguage, storeCurrency, cartTotal, cartItemCount }
+      });
+      // On the checkout success page, once per order:
+      window.ConferbotWidget.track("purchase", { value, currency, order_id });
+    };
+  })(document, "script", "conferbot-js");
 </script>
 ```
 
-The only credential needed is the **Chatbot ID** (the bot's ID from the Conferbot dashboard). All widget appearance and behavior - position, colors, theme, language, auto-open, proactive prompts, disabled URLs - is configured in the Conferbot dashboard under **Customize** and delivered to the widget at runtime; the extension does not duplicate those settings.
+The only credential needed is the **Chatbot ID**. Everything visitors see is set per bot in the Conferbot dashboard and delivered at runtime, with nothing to configure in OpenCart: flows and AI agents, live chat with handover to your team (queue position, leave a message when nobody is free, read receipts, file sharing, post-chat rating), the home screen, themes and dark mode, colours, launcher and mascot, greetings, languages and disabled URLs. The extension does not duplicate those settings.
+
+### Identity verification (optional)
+
+With a secret from Conferbot (workspace settings > Security > Identity verification) pasted under Advanced settings, each logged-in customer is sent with `hash = HMAC-SHA256(secret, user.id)`, computed on your server. Conferbot then trusts their name and email and can link their chats to their contact. The secret is stored in your OpenCart settings and never sent to the browser. Without it, the customer's details are still passed but marked unverified, and if your workspace *requires* verification they are dropped.
+
+### Sales tracking
+
+The checkout success page reports the customer's own order (`purchase`, with value, currency and order number) once per order, and every AJAX add-to-cart as `add_to_cart`. Conferbot credits a sale to a chat that happened within the week before it. A store that upgraded in place gets the second event the next time the settings page is opened.
 
 `options.user` and `options.customData` become the visitor's identity/context in Conferbot chats, so the bot and human agents see the customer's name, email, cart total, and store details.
 
 ## Requirements
 
-- OpenCart 3.0.x
+- OpenCart 3.0.x (verified on 3.0.3.9 with PHP 8.1). OpenCart 4 is not supported yet.
 - PHP 7.2+
 - A Conferbot account with a published chatbot (or use the built-in demo bot to try it first)
 
@@ -50,7 +66,8 @@ The configure screen is two steps: paste your Chatbot ID, flip the switch, save.
 
 | Setting | Description |
 |---|---|
-| Chatbot ID | Required. In the Conferbot dashboard open your bot, go to **Share > Embed into website**, and copy the Bot ID (24-character hex). |
+| Chatbot ID | Required. In the Conferbot dashboard open your bot, go to **Share > Embed** and copy the code; the extension finds the 24-character ID in it. |
+| Identity verification secret | Optional. Signs logged-in customers so Conferbot can trust them. Write-only: shown as saved, never displayed. *(Advanced)* |
 | Turn the chat on | Master on/off switch. |
 | How the chat appears | Floating chat bubble (default) or popup window. *(Advanced)* |
 | Widget script URL | Leave as is for the Conferbot CDN. Useful for staging/self-hosted widget builds. *(Advanced)* |
@@ -83,7 +100,7 @@ Settings are stored under the `module_conferbot` code: `module_conferbot_status`
 
 ## Tests
 
-18 PHPUnit tests (60 assertions) cover bot ID extraction (bare ID, full snippet, dashboard URL, garbage, empty), strict validation, widget option building (guest/customer/cart variants, type casting), script-injection safety of the inlined JSON, and loader snippet rendering. The suite runs without an OpenCart installation - `ConferbotLoader` is a pure PHP class.
+20 PHPUnit tests (73 assertions) cover bot ID extraction (bare ID, full snippet, dashboard URL, garbage, empty), strict validation, widget option building (guest/customer/cart variants, type casting), the identity hash and write-only secret, the purchase event, script-injection safety of the inlined JSON, and loader snippet rendering. The suite runs without an OpenCart installation - `ConferbotLoader` is a pure PHP class.
 
 ```bash
 # any PHP 7.2+ with phpunit 9:
