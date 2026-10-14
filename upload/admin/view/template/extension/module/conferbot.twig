@@ -111,6 +111,14 @@
               </select>
             </div>
             <div class="cb-adv-row">
+              <label class="cb-adv-label" for="cb-identity">{{ text_identity_label }}</label>
+              <input class="cb-adv-input" type="password" id="cb-identity" name="module_conferbot_identity_secret" autocomplete="new-password" value=""
+                placeholder="{% if identity_secret_saved %}{{ text_identity_saved }}{% else %}{{ text_identity_placeholder }}{% endif %}">
+              {% if identity_secret_saved %}
+                <label><input type="checkbox" name="module_conferbot_identity_secret_clear" value="1"> {{ text_identity_clear }}</label>
+              {% endif %}
+            </div>
+            <div class="cb-adv-row">
               <label class="cb-adv-label" for="cb-script">{{ text_script_url_label }}</label>
               <input class="cb-adv-input" type="text" id="cb-script" name="module_conferbot_script_url" value="{{ module_conferbot_script_url }}">
             </div>
