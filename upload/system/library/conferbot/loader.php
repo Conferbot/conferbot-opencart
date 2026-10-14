@@ -70,10 +70,11 @@ class ConferbotLoader
      * @param array $site keys: name, url, language, currency
      * @param array|null $customer keys: id, firstname, lastname, email (null = guest)
      * @param array|null $cart keys: total, itemCount (null = no cart context)
+     * @param string $secret the workspace's identity verification secret ('' = off)
      *
      * @return array widget options
      */
-    public static function buildOptions(array $site, $customer = null, $cart = null)
+    public static function buildOptions(array $site, $customer = null, $cart = null, $secret = '')
     {
         $options = array('customData' => array(
             'platform' => 'opencart',
@@ -94,6 +95,11 @@ class ConferbotLoader
                 'name' => $name,
                 'email' => isset($customer['email']) ? (string) $customer['email'] : '',
             );
+            // Identity verification: the id signed with the workspace secret,
+            // so Conferbot knows this is the store's own logged-in customer.
+            if ((string) $secret !== '') {
+                $options['user']['hash'] = self::userHash($options['user']['id'], $secret);
+            }
         }
 
         if (is_array($cart)) {
@@ -109,6 +115,62 @@ class ConferbotLoader
     }
 
     /**
+     * HMAC-SHA256 of the signed value (the customer id) with the secret, hex - as Conferbot checks it.
+     *
+     * @param string $value
+     * @param string $secret
+     *
+     * @return string
+     */
+    public static function userHash($value, $secret)
+    {
+        return hash_hmac('sha256', (string) $value, (string) $secret);
+    }
+
+    /**
+     * Write-only secret: a blank field keeps the saved one, "remove" clears it.
+     *
+     * @param string $current
+     * @param string $submitted
+     * @param bool $clear
+     *
+     * @return string
+     */
+    public static function nextIdentitySecret($current, $submitted, $clear)
+    {
+        if ($clear) {
+            return '';
+        }
+        $submitted = trim((string) $submitted);
+
+        return $submitted !== '' ? $submitted : (string) $current;
+    }
+
+    /**
+     * The order on the checkout success page as a purchase, reported once per order.
+     *
+     * @param array|null $order keys: id, total, currency (null = not that page)
+     *
+     * @return array events: name, props, once
+     */
+    public static function events($order)
+    {
+        if (!is_array($order) || empty($order['id'])) {
+            return array();
+        }
+
+        return array(array(
+            'name' => 'purchase',
+            'props' => array(
+                'value' => (float) $order['total'],
+                'currency' => (string) $order['currency'],
+                'order_id' => (string) $order['id'],
+            ),
+            'once' => 'order-' . (int) $order['id'],
+        ));
+    }
+
+    /**
      * JSON safe to inline inside a <script> block: JSON_HEX_* neutralize
      * user-controlled values (customer name/email) in the HTML context.
      *
@@ -116,7 +178,7 @@ class ConferbotLoader
      *
      * @return string
      */
-    public static function toJson(array $options)
+    public static function toJson($options)
     {
         return json_encode($options, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
     }
@@ -128,10 +190,11 @@ class ConferbotLoader
      *
      * @param array $settings keys: bot_id, embed_type, script_url
      * @param string $optionsJson output of self::toJson()
+     * @param string $eventsJson toJson(events()) for the success page, '[]' elsewhere
      *
      * @return string HTML <script> block
      */
-    public static function render(array $settings, $optionsJson)
+    public static function render(array $settings, $optionsJson, $eventsJson = '[]')
     {
         $botId = isset($settings['bot_id']) ? (string) $settings['bot_id'] : '';
 
@@ -162,6 +225,14 @@ class ConferbotLoader
             . '    window.ConferbotWidget('
             . json_encode($botId, $jsFlags) . ', '
             . json_encode($embedType, $jsFlags) . ", options);\n"
+            // What the visitor did, for Conferbot's "chats that led to a sale":
+            // the order on the success page (once per order) and AJAX add-to-cart.
+            . '    var events = ' . $eventsJson . ";\n"
+            . "    events.forEach(function (e) {\n"
+            . "      try { if (e.once) { if (sessionStorage.getItem('cb-track-' + e.once)) return; sessionStorage.setItem('cb-track-' + e.once, '1'); } } catch (err) {}\n"
+            . "      window.ConferbotWidget.track(e.name, e.props || {});\n"
+            . "    });\n"
+            . "    if (window.jQuery) { window.jQuery(document).ajaxSuccess(function (ev, xhr, o) { if (o && /route=checkout\\/cart\\/add/.test(o.url || '')) { window.ConferbotWidget.track('add_to_cart'); } }); }\n"
             . "  };\n"
             . "})(document, 'script', " . json_encode(self::SCRIPT_ELEMENT_ID, $jsFlags) . ");\n"
             . '</script>';
