@@ -127,7 +127,7 @@ class ControllerExtensionModuleConferbot extends Controller
         }
 
         return array(
-            'name' => (string) $this->config->get('config_name'),
+            'name' => self::plain($this->config->get('config_name')),
             'url' => $url,
             'language' => $language,
             'currency' => $currency,
@@ -142,10 +142,19 @@ class ControllerExtensionModuleConferbot extends Controller
 
         return array(
             'id' => $this->customer->getId(),
-            'firstname' => $this->customer->getFirstName(),
-            'lastname' => $this->customer->getLastName(),
-            'email' => $this->customer->getEmail(),
+            'firstname' => self::plain($this->customer->getFirstName()),
+            'lastname' => self::plain($this->customer->getLastName()),
+            'email' => self::plain($this->customer->getEmail()),
         );
+    }
+
+    /**
+     * OpenCart stores form input HTML-escaped ("Tom &amp; Jerry"); the widget
+     * wants the text itself. The JSON_HEX flags keep it safe in the page.
+     */
+    private static function plain($value)
+    {
+        return html_entity_decode((string) $value, ENT_QUOTES, 'UTF-8');
     }
 
     private function buildCart()
