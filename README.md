@@ -6,7 +6,7 @@ Embeds the [Conferbot](https://conferbot.com) AI chat widget on an OpenCart 3.x 
 
 Upload the extension, install it, paste the Chatbot ID, flip the switch, and the bot is live on the storefront (recorded on OpenCart 3.0.5.1, PHP 8.2). Click the GIF for the full-size MP4:
 
-[![Conferbot on OpenCart: upload, install, paste the bot ID, save, open the store and chat](docs/media/install.gif)](https://github.com/Conferbot/conferbot-opencart/releases/download/v1.0.0/install.mp4)
+[![Conferbot on OpenCart: upload, install, paste the bot ID, save, open the store and chat](docs/media/install.gif)](https://github.com/Conferbot/conferbot-opencart/releases/download/v1.1.0/install.mp4)
 
 ## How it works
 
